@@ -1,107 +1,11 @@
-module fund::campaigns {
-    use std::address;
-    use std::string;
-    use std::vector;
-    use std::signer;
-    use aptos_framework::event;
+[package]
+name = 'my_fund'
+version = '1.0.0'
 
-    struct Campaign has key {
-        owner: address,
-        title: string::String,
-        description: string::String,
-        target: u128,
-        deadline: u128,
-        amount_collected: u128,
-        image: string::String,
-        donators: vector::Vector<address>,
-        donations: vector::Vector<u128>,
-    }
+[dependencies.AptosFramework]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'devnet'
+subdir = 'aptos-move/framework/aptos-framework'
 
-    #[event]
-    struct DonationMade has store {
-        campaign_id: u64,
-        donator: address,
-        amount: u128,
-    }
-
-    #[public(entry)]
-    public fun create_campaign(
-        creator: signer,
-        title: string::String,
-        description: string::String,
-        target: u128,
-        deadline: u128,
-        image: string::String
-    ) acquires Campaign {
-        let campaign_id = get_next_campaign_id();
-        let owner = signer::address_of(&creator);
-
-        let new_campaign = Campaign {
-            owner,
-            title,
-            description,
-            target,
-            deadline,
-            amount_collected: 0,
-            image,
-            donators: vector::empty<address>(),
-            donations: vector::empty<u128>(),
-        };
-
-        move_to(&creator, new_campaign);
-        increment_campaign_id();
-    }
-
-    #[public(entry)]
-    public fun donate_to_campaign(campaign_id: u64, amount: u128, donor: signer) acquires Campaign {
-        let donor_address = signer::address_of(&donor);
-
-        let campaign = borrow_global_mut<Campaign>(campaign_id);
-        vector::push_back(&mut campaign.donators, donor_address);
-        vector::push_back(&mut campaign.donations, amount);
-
-        let sent = aptos_framework::account::pay(&campaign.owner, amount);
-        if (sent) {
-            campaign.amount_collected = campaign.amount_collected + amount;
-            event::emit(DonationMade {
-                campaign_id,
-                donator: donor_address,
-                amount,
-            });
-        }
-    }
-
-    #[public(view)]
-    public fun get_campaign(campaign_id: u64): (
-        address, string::String, string::String, u128, u128, u128, string::String,
-        vector::Vector<address>, vector::Vector<u128>
-    ) acquires Campaign {
-        let campaign = borrow_global<Campaign>(campaign_id);
-        (
-            campaign.owner,
-            campaign.title,
-            campaign.description,
-            campaign.target,
-            campaign.deadline,
-            campaign.amount_collected,
-            campaign.image,
-            campaign.donators,
-            campaign.donations
-        )
-    }
-
-    // Helper functions for campaign ID management
-    struct CampaignIdCounter has key {
-        id: u64,
-    }
-
-    public fun get_next_campaign_id(): u64 acquires CampaignIdCounter {
-        let counter = borrow_global<CampaignIdCounter>(0);
-        counter.id
-    }
-
-    public fun increment_campaign_id() acquires CampaignIdCounter {
-        let mut counter = borrow_global_mut<CampaignIdCounter>(0);
-        counter.id = counter.id + 1;
-    }
-}
+[addresses]
+crowdfunding_addr='0x19dcf4bdaaf238c0f41de96bc5e1052d066889a80e7999fde10cef96cb245d94'
